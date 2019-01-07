@@ -1,0 +1,2 @@
+# weibo
+weibo base class
