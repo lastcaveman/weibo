@@ -42,7 +42,7 @@ class Post:
             self.source_tweeted_id = post['source_tweeted_id']
         
         if type=='load':
-            url='https://m.weibo.cn/statuses/show';
+            url='https://m.weibo.cn/statuses/show'
             params={
                 'id':self.id,
                 'aid':'01An4-ozO4lq-nST9dg2jG1mPpYoJvVw_kdqRkacF_05bF8Hc.',
@@ -60,7 +60,6 @@ class Post:
                 'v_p':'59',
             }
             res = requests.get(url, params=params,headers=HEADERS)
-            print(res.request.url)
             try:
                 content = res.json()
             except:
@@ -70,8 +69,6 @@ class Post:
 
             self.published_at=datetime.datetime.strptime(content['data']['created_at'], GMT_FORMAT).strftime('%Y-%m-%d %H:%M:%S')
             
-            print(self.published_at)
-
 
 class User:
 
