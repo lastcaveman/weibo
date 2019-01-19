@@ -2,3 +2,5 @@ __pycache__/
 /.vscode
 .DS_Store
 .config
+cave_weibo.egg-info/
+dist/
