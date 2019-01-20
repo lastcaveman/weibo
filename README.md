@@ -14,56 +14,45 @@ weibo 采用 Python 编写，用来方便地获取微博上各种内容的信息
 ---------
 
 准备
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
 
 **克隆本项目**
-
-
-.. code:: bash
-
+```
   git clone git@github.com:lastcaveman/weibo.git
   cd weibo
-
+```
 
 **解决依赖**
 
-* `requests <https://github.com/kennethreitz/requests>`_
-* `datetime <https://github.com/zopefoundation/DateTime>`_
-* `configparser <https://docs.python.org/3/library/configparser.html>`_
+* `requests <https://github.com/kennethreitz/requests>`
+* `datetime <https://github.com/zopefoundation/DateTime>`
+* `configparser <https://docs.python.org/3/library/configparser.html>`
 
 
-.. code:: bash
-
+```
   sudo pip install -r requirements.txt
-
+```
 
 or
 
-.. code:: bash
-
+```
   sudo pip2 install -r requirements.txt
-
+```
 
 User: 用户
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
 User 代表一个用户, 处理知乎问题相关操作. 创建一个 User 对象需传入该用户的 ID ，如：
 
-.. code-block:: python
-
+```
     from weibo import User
-    
     user = User(1750349192)
+```
 
 通过 ID 得到 User 对象后, 可以加载用户信息:
-    
+```
     user = user.load()
-
+```
 然后获取该用户的一些信息:
 
-.. code-block:: python
-
+```
     # -*- coding: utf-8 -*-
     from weibo import User
     
@@ -90,3 +79,4 @@ User 代表一个用户, 处理知乎问题相关操作. 创建一个 User 对�
     posts = user.get_posts()
     # 获取该用户的全部动态
     posts = user.get_allposts()
+```
