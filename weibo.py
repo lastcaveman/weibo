@@ -24,14 +24,6 @@ HEADERS = {
 class Post:
 
     id = None
-    text = ''
-    is_long = False
-    is_retweeted = False
-    source_tweeted_id = None
-    source_text = ''
-    published_at = None
-    comment = []
-    user = None
 
     def __init__(self, post):
         if 'id' in post.keys():   
@@ -65,26 +57,45 @@ class Post:
             # 'user': json.dumps(self.user),
         })
 
-    def text(self):
+    def get_text(self):
+        if not hasattr(self, 'text'):
+            self.load()
         return self.text
 
-    def is_long(self):
+    def get_is_long(self):
+        if not hasattr(self, 'is_long'):
+            self.load()
         return self.is_long
 
-    def is_retweeted(self):
+    def get_is_retweeted(self):
+        if not hasattr(self, 'is_retweeted'):
+            self.load()
         return self.is_retweeted
 
-    def source_tweeted_id(self):
+    def get_source_tweeted_id(self):
+        if not hasattr(self, 'source_tweeted_id'):
+            self.load()
         return self.source_tweeted_id
 
-    def source_text(self):
+    def get_source_text(self):
+        if not hasattr(self, 'source_text'):
+            self.load()
         return self.source_text
 
-    def published_at(self):
+    def get_published_at(self):
+        if not hasattr(self, 'published_at'):
+            self.load()
         return self.published_at
 
-    def comment(self):
+    def get_comment(self):
+        if not hasattr(self, 'comment'):
+            self.load()
         return self.comment
+
+    def get_user(self):
+        if not hasattr(self, 'user'):
+            self.load()
+        return self.user
 
     def load(self):
         url='https://m.weibo.cn/statuses/show'
