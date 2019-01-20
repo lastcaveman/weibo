@@ -189,7 +189,7 @@ class User:
     def load_timeline(self, num=10):
         url = 'https://m.weibo.cn/feed/friends?max_id='
         headers=HEADERS
-        headers['cookie'] = getConfig("user", "cookie")
+        headers['cookie'] = getConfig("weibo-user", "cookie")
         res = requests.get(url, headers=headers)
         try:
             content = res.json()
