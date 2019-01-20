@@ -123,28 +123,44 @@ class User:
             self.followers_count = user['followers_count']
             self.follow_count = user['follow_count']
 
-    def nickname(self):
+    def get_nickname(self):
+        if not hasattr(self, 'nickname'):
+            self.load()
         return self.nickname
     
-    def avatar(self):
+    def get_avatar(self):
+        if not hasattr(self, 'avatar'):
+            self.load()
         return self.avatar
 
-    def statuses_count(self):
+    def get_statuses_count(self):
+        if not hasattr(self, 'statuses_count'):
+            self.load()
         return self.statuses_count
 
-    def follow_me(self):
-        return self.follow_me
-
-    def description(self):
+    def get_description(self):
+        if not hasattr(self, 'description'):
+            self.load()
         return self.description
 
-    def following(self):
+    def get_follow_me(self):
+        if not hasattr(self, 'follow_me'):
+            self.load()
+        return self.follow_me
+
+    def get_following(self):
+        if not hasattr(self, 'following'):
+            self.load()
         return self.following
 
-    def followers_count(self):
+    def get_followers_count(self):
+        if not hasattr(self, 'followers_count'):
+            self.load()
         return self.followers_count
 
-    def follow_count(self):
+    def get_follow_count(self):
+        if not hasattr(self, 'follow_count'):
+            self.load()
         return self.follow_count
         
     def __str__(self):
@@ -161,7 +177,6 @@ class User:
         })
 
     def load(self):
-        url = '?type=uid&value=1750349192&containerid=1005051750349192'
         url='https://m.weibo.cn/api/container/getIndex'
         params={
             'type':'uid',
