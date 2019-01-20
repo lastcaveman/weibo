@@ -117,7 +117,7 @@ class Post:
 class User:
 
     id = None
-    posts = []
+    # posts = []
     timeline = []
 
     def __init__(self, user):
@@ -173,7 +173,18 @@ class User:
         if not hasattr(self, 'follow_count'):
             self.load()
         return self.follow_count
-        
+
+    def get_posts(self):
+        if not hasattr(self, 'posts'):
+            self.load_posts()
+        return self.posts
+
+    def get_allposts(self):
+        if not hasattr(self, 'all_posts'):
+            self.load_allposts()
+        return self.posts
+
+
     def __str__(self):
         return json.dumps({
             'id': self.id,
@@ -226,13 +237,17 @@ class User:
             self.timeline.append(post)
 
     def load_allposts(self):
-        
-        page = ceil(self.statuses_count / 10) + 1
+        if not hasattr(self, 'posts'):
+            self.posts = []
+        statuses_count=self.get_statuses_count()
+        page = ceil(statuses_count / 10) + 1
         while page>0:
             self.load_posts(page)
             page=page-1
 
     def load_posts(self, page=1,since_id=''):
+        if not hasattr(self, 'posts'):
+            self.posts = []
         url = 'https://m.weibo.cn/api/container/getIndex'
         params={
             'type': 'uid',
