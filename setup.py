@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 #-*- coding:utf-8 -*-
 
-from setuptools import setup, find_packages            #这个包没有的可以pip一下
+from setuptools import setup, find_packages
 
 setup(
     name = "cave-weibo",
@@ -18,5 +18,5 @@ setup(
     py_modules=['weibo'],
     include_package_data = True,
     platforms = "any",
-    install_requires = ["requests","configparser"]          #这个项目需要的第三方库
+    install_requires = ["requests","configparser"]
 )
