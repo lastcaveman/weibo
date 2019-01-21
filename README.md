@@ -87,3 +87,45 @@ User 代表一个用户. 创建一个 User 对象需传入该用户的 ID ，如
     # 获取该用户的全部动态
     posts = user._allposts()
 ```
+
+### Post:微博 ###
+---------
+Post 代表一个微博. 创建一个微博对象需传入该用户的 ID ，如：
+
+```
+    from weibo import Post
+    post = Post(4320019674552079)
+```
+
+通过 ID 得到 Post 对象后, 可以加载用户信息:
+```
+    post = post.load()
+```
+然后获取该微博的一些信息:
+
+```
+    # -*- coding: utf-8 -*-
+    from weibo import Post
+    
+    post = Post(1750349192)
+    post = post.load()
+
+    # 获取该微博文字信息
+    text = post._text()
+    
+    # 获取该微博是否为长微博
+    is_long = post._is_long()
+    
+    # 获取该微博是否为转发微博
+    is_retweeted = post._is_retweeted()
+    
+    # 获取该微博转发的原微博 ID
+    source_tweeted_id = post._source_tweeted_id()
+    
+    # 获取该微博的文字信息
+    source_text = post._source_text()
+    
+    # 获取该微博发布时间
+    published_at = post._published_at()
+
+```
