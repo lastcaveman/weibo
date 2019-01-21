@@ -37,7 +37,7 @@ or
 
 ### User:用户 ###
 ---------
-User 代表一个用户, 处理知乎问题相关操作. 创建一个 User 对象需传入该用户的 ID ，如：
+User 代表一个用户. 创建一个 User 对象需传入该用户的 ID ，如：
 
 ```
     from weibo import User
