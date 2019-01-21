@@ -1,16 +1,19 @@
 # -*- coding: utf-8 -*-
 
-import os, json
+import os
+import json
 import requests
 import datetime
 import configparser
 from math import ceil
+
 
 def getConfig(section, key):
     config = configparser.RawConfigParser()
     path = '.config'
     config.read(path)
     return config.get(section, key)
+
 
 HEADERS = {
     'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
@@ -21,109 +24,137 @@ HEADERS = {
     'upgrade-insecure-requests': '1',
     'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/71.0.3578.98 Safari/537.36',
 }
+
+
 class Post:
 
     id = None
 
     def __init__(self, post):
-        if 'id' in post.keys():   
-            self.id = post['id']
-        if 'text' in post.keys():   
-            self.text = post['text']
-        if 'isLongText' in post.keys():   
-            self.is_long = post['isLongText']
-        if 'retweeted_status' in post.keys():   
-            self.is_retweeted = True
-            self.source_tweeted_id = post['retweeted_status']['id']
-        if 'edit_at' in post.keys():
-            GMT_FORMAT = '%a %b %d %H:%M:%S %z %Y'
-            self.published_at=datetime.datetime.strptime(post['edit_at'], GMT_FORMAT).strftime('%Y-%m-%d %H:%M:%S')
-        elif 'created_at' in post.keys() and len(post['created_at'])>10:
-            GMT_FORMAT = '%a %b %d %H:%M:%S %z %Y'
-            self.published_at=datetime.datetime.strptime(post['created_at'], GMT_FORMAT).strftime('%Y-%m-%d %H:%M:%S')
-        if 'user' in post.keys():   
-            self.user = User(post['user'])
+        if isinstance(post, int):
+            self.id = post
+        elif isinstance(post, dict):
+            if 'id' in post.keys():
+                self.id = post['id']
+            if 'text' in post.keys():
+                self.text = post['text']
+            if 'isLongText' in post.keys():
+                self.is_long = post['isLongText']
+            if 'isLongText' in post.keys() and 'text' in post.keys():
+                if not self.is_long:
+                    self.source_text = self.text
+            if 'retweeted_status' in post.keys():
+                self.is_retweeted = True
+                self.source_tweeted_id = post['retweeted_status']['id']
+            else:
+                self.is_retweeted = False
+                self.source_tweeted_id = None
+            if 'edit_at' in post.keys():
+                GMT_FORMAT = '%a %b %d %H:%M:%S %z %Y'
+                self.published_at = datetime.datetime.strptime(
+                    post['edit_at'], GMT_FORMAT).strftime('%Y-%m-%d %H:%M:%S')
+            elif 'created_at' in post.keys() and len(post['created_at']) > 10:
+                GMT_FORMAT = '%a %b %d %H:%M:%S %z %Y'
+                self.published_at = datetime.datetime.strptime(
+                    post['created_at'], GMT_FORMAT).strftime('%Y-%m-%d %H:%M:%S')
+            else:
+                self.published_at = ''
+            if 'user' in post.keys():
+                self.user = User(post['user'])
 
     def __str__(self):
+        if hasattr(self, 'source_text'):
+            source_text = self.source_text
+        else:
+            source_text = ''
         return json.dumps({
             'id': self.id,
             'text': self.text,
             'is_long': self.is_long,
             'is_retweeted': self.is_retweeted,
             'source_tweeted_id': self.source_tweeted_id,
-            'source_text': self.source_text,
+            'source_text': source_text,
             'published_at': self.published_at,
-            'comment': self.comment,
-            # 'user': json.dumps(self.user),
-        })
+        }, ensure_ascii=False)
 
-    def get_text(self):
+    def _text(self):
         if not hasattr(self, 'text'):
             self.load()
         return self.text
 
-    def get_is_long(self):
+    def _is_long(self):
         if not hasattr(self, 'is_long'):
             self.load()
         return self.is_long
 
-    def get_is_retweeted(self):
+    def _is_retweeted(self):
         if not hasattr(self, 'is_retweeted'):
             self.load()
         return self.is_retweeted
 
-    def get_source_tweeted_id(self):
+    def _source_tweeted_id(self):
         if not hasattr(self, 'source_tweeted_id'):
             self.load()
         return self.source_tweeted_id
 
-    def get_source_text(self):
+    def _source_text(self):
         if not hasattr(self, 'source_text'):
             self.load()
         return self.source_text
 
-    def get_published_at(self):
+    def _published_at(self):
         if not hasattr(self, 'published_at'):
             self.load()
         return self.published_at
 
-    def get_comment(self):
+    def _comment(self):
         if not hasattr(self, 'comment'):
+            self.comment = []
             self.load()
         return self.comment
 
-    def get_user(self):
+    def _user(self):
         if not hasattr(self, 'user'):
             self.load()
         return self.user
 
     def load(self):
-        url='https://m.weibo.cn/statuses/show'
-        params={
-            'id':self.id,
-            'lang':'zh_CN',
-            'ua':'iPhone8,1_iOS12.0.1_Weico_5000_wifi',
+        url = 'https://m.weibo.cn/statuses/show'
+        params = {
+            'id': self.id,
+            'lang': 'zh_CN',
+            'ua': 'iPhone8,1_iOS12.0.1_Weico_5000_wifi',
         }
-        res = requests.get(url, params=params,headers=HEADERS)
+        res = requests.get(url, params=params, headers=HEADERS)
         try:
             content = res.json()
         except:
-            return 
-        self.user = User(content['data']['user'])
-        self.source_text=content['data']['text']
+            return
+        post = content['data']
+        self.text = post['text']
+        self.is_long = post['isLongText']
+        self.source_text = post['text']
+
+        if 'retweeted_status' in post.keys():
+            self.is_retweeted = True
+            self.source_tweeted_id = post['retweeted_status']['id']
+        else:
+            self.is_retweeted = False
+            self.source_tweeted_id = None
         GMT_FORMAT = '%a %b %d %H:%M:%S %z %Y'
-        self.published_at=datetime.datetime.strptime(content['data']['created_at'], GMT_FORMAT).strftime('%Y-%m-%d %H:%M:%S')
+        self.published_at = datetime.datetime.strptime(
+            post['created_at'], GMT_FORMAT).strftime('%Y-%m-%d %H:%M:%S')
+        self.user = User(post['user'])
+
 
 class User:
 
     id = None
-    # posts = []
-    timeline = []
 
     def __init__(self, user):
-        if isinstance(user,int):
+        if isinstance(user, int):
             self.id = user
-        elif isinstance(user,dict):
+        elif isinstance(user, dict):
             self.id = user['id']
             self.nickname = user['screen_name']
             self.avatar = user['avatar_hd']
@@ -134,56 +165,55 @@ class User:
             self.followers_count = user['followers_count']
             self.follow_count = user['follow_count']
 
-    def get_nickname(self):
+    def _nickname(self):
         if not hasattr(self, 'nickname'):
             self.load()
         return self.nickname
-    
-    def get_avatar(self):
+
+    def _avatar(self):
         if not hasattr(self, 'avatar'):
             self.load()
         return self.avatar
 
-    def get_statuses_count(self):
+    def _statuses_count(self):
         if not hasattr(self, 'statuses_count'):
             self.load()
         return self.statuses_count
 
-    def get_description(self):
+    def _description(self):
         if not hasattr(self, 'description'):
             self.load()
         return self.description
 
-    def get_follow_me(self):
+    def _follow_me(self):
         if not hasattr(self, 'follow_me'):
             self.load()
         return self.follow_me
 
-    def get_following(self):
+    def _following(self):
         if not hasattr(self, 'following'):
             self.load()
         return self.following
 
-    def get_followers_count(self):
+    def _followers_count(self):
         if not hasattr(self, 'followers_count'):
             self.load()
         return self.followers_count
 
-    def get_follow_count(self):
+    def _follow_count(self):
         if not hasattr(self, 'follow_count'):
             self.load()
         return self.follow_count
 
-    def get_posts(self):
+    def _posts(self):
         if not hasattr(self, 'posts'):
             self.load_posts()
         return self.posts
 
-    def get_allposts(self):
+    def _allposts(self):
         if not hasattr(self, 'all_posts'):
             self.load_allposts()
         return self.posts
-
 
     def __str__(self):
         return json.dumps({
@@ -196,20 +226,20 @@ class User:
             'following': self.following,
             'followers_count': self.followers_count,
             'follow_count': self.follow_count,
-        })
+        }, ensure_ascii=False)
 
     def load(self):
-        url='https://m.weibo.cn/api/container/getIndex'
-        params={
-            'type':'uid',
-            'value':self.id,
-            'containerid':'100505'+str(self.id),
+        url = 'https://m.weibo.cn/api/container/getIndex'
+        params = {
+            'type': 'uid',
+            'value': self.id,
+            'containerid': '100505'+str(self.id),
         }
-        res = requests.get(url, params=params,headers=HEADERS)
+        res = requests.get(url, params=params, headers=HEADERS)
         try:
             content = res.json()
         except:
-            return 
+            return
         self.id = content['data']['userInfo']['id']
         self.nickname = content['data']['userInfo']['screen_name']
         self.avatar = content['data']['userInfo']['avatar_hd']
@@ -225,7 +255,7 @@ class User:
 
     def load_timeline(self, num=10):
         url = 'https://m.weibo.cn/feed/friends?max_id='
-        headers=HEADERS
+        headers = HEADERS
         headers['cookie'] = getConfig("weibo-user", "cookie")
         res = requests.get(url, headers=headers)
         try:
@@ -233,30 +263,30 @@ class User:
         except:
             return []
         for v in content['data']['statuses']:
-            post = Post(v) 
+            post = Post(v)
             self.timeline.append(post)
 
     def load_allposts(self):
         if not hasattr(self, 'posts'):
             self.posts = []
-        statuses_count=self.get_statuses_count()
+        statuses_count = self._statuses_count()
         page = ceil(statuses_count / 10) + 1
-        while page>0:
+        while page > 0:
             self.load_posts(page)
-            page=page-1
+            page = page-1
 
-    def load_posts(self, page=1,since_id=''):
+    def load_posts(self, page=1, since_id=''):
         if not hasattr(self, 'posts'):
             self.posts = []
         url = 'https://m.weibo.cn/api/container/getIndex'
-        params={
+        params = {
             'type': 'uid',
             'value': self.id,
             'containerid': '107603' + str(self.id),
             'page': page,
             'since_id': since_id,
         }
-        res = requests.get(url, params=params,headers=HEADERS)
+        res = requests.get(url, params=params, headers=HEADERS)
         try:
             content = res.json()
         except:
@@ -264,7 +294,5 @@ class User:
         for v in content['data']['cards']:
             if v['card_type'] != 9:
                 continue
-            post = Post(v['mblog']) 
+            post = Post(v['mblog'])
             self.posts.append(post)
-
-

@@ -58,32 +58,32 @@ User 代表一个用户, 处理知乎问题相关操作. 创建一个 User 对�
     user = user.load()
 
     # 获取该用户的昵称
-    nickname = user.get_nickname()
+    nickname = user._nickname()
     
     # 获取该用户的头像
-    avatar = user.get_avatar()
+    avatar = user._avatar()
     
     # 获取该用户的动态条数
-    statuses_count = user.get_statuses_count()
+    statuses_count = user._statuses_count()
     
     # 获取该用户的签名
-    description = user.get_description()
+    description = user._description()
     
     # 获取该用户是否关注当前登录用户
-    follow_me = user.get_follow_me()
+    follow_me = user._follow_me()
     
     # 获取当前登录用户是否关注该用户
-    following = user.get_following()
+    following = user._following()
     
     # 获取关注该用户的用户数
-    followers_count = user.get_followers_count()
+    followers_count = user._followers_count()
     
     # 获取该用户关注的用户数
-    follow_count = user.get_follow_count()
+    follow_count = user._follow_count()
     
     # 获取该用户的首页动态
-    posts = user.get_posts()
+    posts = user._posts()
     
     # 获取该用户的全部动态
-    posts = user.get_allposts()
+    posts = user._allposts()
 ```
