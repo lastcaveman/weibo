@@ -210,6 +210,12 @@ class User:
             self.load_posts()
         return self.posts
 
+    def _timeline(self):
+        if not hasattr(self, 'timeline'):
+            self.timeline = []
+            self.load_timeline()
+        return self.timeline
+
     def _allposts(self):
         if not hasattr(self, 'all_posts'):
             self.load_allposts()
