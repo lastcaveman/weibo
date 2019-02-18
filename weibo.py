@@ -150,6 +150,7 @@ class Post:
 class User:
 
     id = None
+    cookie = None
 
     def __init__(self, user):
         if isinstance(user, int):
@@ -164,6 +165,9 @@ class User:
             self.following = user['following']
             self.followers_count = user['followers_count']
             self.follow_count = user['follow_count']
+
+    def set_cookie(self, cookie):
+        self.cookie = cookie
 
     def _nickname(self):
         if not hasattr(self, 'nickname'):
@@ -262,7 +266,7 @@ class User:
     def load_timeline(self, num=10):
         url = 'https://m.weibo.cn/feed/friends?max_id='
         headers = HEADERS
-        headers['cookie'] = getConfig("weibo-user", "cookie")
+        headers['cookie'] = self.cookie
         res = requests.get(url, headers=headers)
         try:
             content = res.json()
