@@ -26,6 +26,31 @@ HEADERS = {
 }
 
 
+class Search:
+
+    line = []
+
+    def load(self, keyword, page=1):
+        url = 'https://m.weibo.cn/api/container/getIndex'
+        params = {
+            'containerid': '100103type=61&q='+keyword,
+            'page': page,
+            'page_type': 'searchall',
+        }
+        headers = HEADERS
+        res = requests.get(url, params=params, headers=headers)
+        try:
+            content = res.json()
+        except:
+            return []
+        items = []
+        for v in content['data']['cards'][0]['card_group']:
+            post = Post(v['mblog'])
+            self.line.append(post)
+            items.append(post)
+        return items
+
+
 class Post:
 
     id = None
@@ -34,6 +59,13 @@ class Post:
         if isinstance(post, int):
             self.id = post
         elif isinstance(post, dict):
+            self.pics = []
+            if 'pics' in post.keys():
+                for v in post['pics']:
+                    if 'large' in v.keys():
+                        self.pics.append(v['large']['url'])
+                    else:
+                        self.pics.append(v['url'])                
             if 'id' in post.keys():
                 self.id = post['id']
             if 'text' in post.keys():
@@ -74,6 +106,7 @@ class Post:
             'is_retweeted': self.is_retweeted,
             'source_tweeted_id': self.source_tweeted_id,
             'source_text': source_text,
+            'pics': self.pics,
             'published_at': self.published_at,
         }, ensure_ascii=False)
 
@@ -135,6 +168,13 @@ class Post:
         self.is_long = post['isLongText']
         self.source_text = post['text']
 
+        self.pics = []
+        if 'pics' in post.keys():
+            for v in post['pics']:
+                if 'large' in v.keys():
+                    self.pics.append(v['large']['url'])
+                else:
+                    self.pics.append(v['url'])
         if 'retweeted_status' in post.keys():
             self.is_retweeted = True
             self.source_tweeted_id = post['retweeted_status']['id']

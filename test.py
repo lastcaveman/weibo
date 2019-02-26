@@ -1,6 +1,9 @@
-from weibo import User, Post
+from weibo import User, Post, Search
 
 if __name__ == '__main__':
+
+    search = Search()
+    search.load('星巴克')
 
     user = User(6000001234)
     nickname = user._nickname()
