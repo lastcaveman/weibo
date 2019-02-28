@@ -8,11 +8,13 @@ import configparser
 from math import ceil
 import random
 
+
 def getConfig(section, key):
     config = configparser.RawConfigParser()
     path = '.config'
     config.read(path)
     return config.get(section, key)
+
 
 HEADERS = {
     'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
@@ -24,14 +26,27 @@ HEADERS = {
     'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/71.0.3578.98 Safari/537.36',
 }
 
+
 def load_proxies():
     proxies = []
-    res = requests.get('http://lab.crossincode.com/proxy/get/')
-    content = res.json()
-    if 'proxies' in content.keys():
-        for proxy in content['proxies']:
-            if 'http' in proxy.keys():
-                proxies.append(proxy['http'])
+    # res = requests.get('http://lab.crossincode.com/proxy/get/')
+    # content = res.json()
+    # if 'proxies' in content.keys():
+    #     for proxy in content['proxies']:
+    #         if 'http' in proxy.keys():
+    #             proxies.append(proxy['http'])
+    res = requests.get(
+        'https://raw.githubusercontent.com/fate0/proxylist/master/proxy.list')
+    # content = res.json()
+    # print(res.content)
+    content = res.content.decode().split("\n")
+    for v in content:
+        try:
+            proxy=json.loads(v)
+            if proxy['type'] == 'http':
+                proxies.append(proxy)
+        except:
+            pass
     return proxies
 
 class Search:
@@ -49,7 +64,7 @@ class Search:
         length = len(self.proxies_bak)
         if length > 0:
             r = random.randint(0, length-1)
-            self.proxies = {'http': self.proxies_bak[r]}
+            self.proxies = {'http': self.proxies_bak[r]['host']+':'+str(self.proxies_bak[r]['port'])}
 
     def load(self, keyword, page=1):
         url = 'https://m.weibo.cn/api/container/getIndex'
@@ -61,7 +76,8 @@ class Search:
         headers = HEADERS
         if self.is_proxy:
             self.get_proxy()
-            res = requests.get(url, params=params, headers=headers, proxies=self.proxies)
+            res = requests.get(url, params=params,
+                               headers=headers, proxies=self.proxies)
         else:
             res = requests.get(url, params=params, headers=headers)
         try:
@@ -216,6 +232,9 @@ class User:
 
     id = None
     cookie = None
+    is_proxy = False
+    proxies_bak = []
+    proxies = {}
 
     def __init__(self, user):
         if isinstance(user, int):
@@ -303,6 +322,16 @@ class User:
             'follow_count': self.follow_count,
         }, ensure_ascii=False)
 
+    def use_proxy(self):
+        self.is_proxy = True
+        self.proxies_bak = load_proxies()
+
+    def get_proxy(self):
+        length = len(self.proxies_bak)
+        if length > 0:
+            r = random.randint(0, length-1)
+            self.proxies = {'http': self.proxies_bak[r]['host']+':'+str(self.proxies_bak[r]['port'])}
+
     def load(self):
         url = 'https://m.weibo.cn/api/container/getIndex'
         params = {
@@ -332,14 +361,21 @@ class User:
         url = 'https://m.weibo.cn/feed/friends?max_id='
         headers = HEADERS
         headers['cookie'] = self.cookie
-        res = requests.get(url, headers=headers)
+        timeline = []
+        if self.is_proxy:
+            self.get_proxy()
+            res = requests.get(url, headers=headers, proxies=self.proxies)
+        else:
+            res = requests.get(url, headers=headers)
         try:
             content = res.json()
         except:
             return []
         for v in content['data']['statuses']:
             post = Post(v)
+            timeline.append(post)
             self.timeline.append(post)
+        return timeline
 
     def load_allposts(self):
         if not hasattr(self, 'posts'):
