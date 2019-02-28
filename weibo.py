@@ -6,14 +6,13 @@ import requests
 import datetime
 import configparser
 from math import ceil
-
+import random
 
 def getConfig(section, key):
     config = configparser.RawConfigParser()
     path = '.config'
     config.read(path)
     return config.get(section, key)
-
 
 HEADERS = {
     'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
@@ -25,10 +24,32 @@ HEADERS = {
     'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/71.0.3578.98 Safari/537.36',
 }
 
+def load_proxies():
+    proxies = []
+    res = requests.get('http://lab.crossincode.com/proxy/get/')
+    content = res.json()
+    if 'proxies' in content.keys():
+        for proxy in content['proxies']:
+            if 'http' in proxy.keys():
+                proxies.append(proxy['http'])
+    return proxies
 
 class Search:
 
     line = []
+    is_proxy = False
+    proxies_bak = []
+    proxies = {}
+
+    def use_proxy(self):
+        self.is_proxy = True
+        self.proxies_bak = load_proxies()
+
+    def get_proxy(self):
+        length = len(self.proxies_bak)
+        if length > 0:
+            r = random.randint(0, length-1)
+            self.proxies = {'http': self.proxies_bak[r]}
 
     def load(self, keyword, page=1):
         url = 'https://m.weibo.cn/api/container/getIndex'
@@ -38,7 +59,11 @@ class Search:
             'page_type': 'searchall',
         }
         headers = HEADERS
-        res = requests.get(url, params=params, headers=headers)
+        if self.is_proxy:
+            self.get_proxy()
+            res = requests.get(url, params=params, headers=headers, proxies=self.proxies)
+        else:
+            res = requests.get(url, params=params, headers=headers)
         try:
             content = res.json()
         except:
@@ -65,7 +90,7 @@ class Post:
                     if 'large' in v.keys():
                         self.pics.append(v['large']['url'])
                     else:
-                        self.pics.append(v['url'])                
+                        self.pics.append(v['url'])
             if 'id' in post.keys():
                 self.id = post['id']
             if 'text' in post.keys():
