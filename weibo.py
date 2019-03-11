@@ -109,11 +109,9 @@ class Post:
                 self.id = post['id']
             if 'text' in post.keys():
                 self.text = post['text']
+                self.source_text = self.text
             if 'isLongText' in post.keys():
                 self.is_long = post['isLongText']
-            if 'isLongText' in post.keys() and 'text' in post.keys():
-                if not self.is_long:
-                    self.source_text = self.text
             if 'retweeted_status' in post.keys():
                 self.is_retweeted = True
                 self.source_tweeted_id = post['retweeted_status']['id']
