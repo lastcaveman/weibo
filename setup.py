@@ -5,7 +5,7 @@ from setuptools import setup, find_packages
 
 setup(
     name = "cave-weibo",
-    version = "0.1.16",
+    version = "0.1.17",
     keywords = ("pip", "weibo","微博","爬虫"),
     description = "weibo base class. 微博 爬虫 基础",
     long_description = "weibo base class. 微博 爬虫 基础",

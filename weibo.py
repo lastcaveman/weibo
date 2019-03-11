@@ -400,6 +400,7 @@ class User:
             posts = posts+result
             page = page+1
             time.sleep(2)
+        return posts
 
     def load_posts(self, page=1, since_id=''):
         if not hasattr(self, 'posts'):
