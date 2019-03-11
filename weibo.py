@@ -7,14 +7,7 @@ import datetime
 import configparser
 from math import ceil
 import random
-
-
-def getConfig(section, key):
-    config = configparser.RawConfigParser()
-    path = '.config'
-    config.read(path)
-    return config.get(section, key)
-
+import time
 
 HEADERS = {
     'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
@@ -23,28 +16,29 @@ HEADERS = {
     'cache-control': 'max-age=0',
     'dnt': '1',
     'upgrade-insecure-requests': '1',
-    'user-agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_14_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/71.0.3578.98 Safari/537.36',
+    'user-agent': 'Mozilla/5.0 (Windows; U; Windows NT 6.1; en-US) AppleWebKit/534.20 (KHTML, like Gecko) Chrome/11.0.672.2 Safari/534.20',
 }
 
+def getConfig(section, key):
+    config = configparser.RawConfigParser()
+    path = '.config'
+    config.read(path)
+    return config.get(section, key)
 
 def load_proxies():
-    proxies = []
-    # res = requests.get('http://lab.crossincode.com/proxy/get/')
-    # content = res.json()
-    # if 'proxies' in content.keys():
-    #     for proxy in content['proxies']:
-    #         if 'http' in proxy.keys():
-    #             proxies.append(proxy['http'])
-    res = requests.get(
-        'https://raw.githubusercontent.com/fate0/proxylist/master/proxy.list')
-    # content = res.json()
-    # print(res.content)
+    proxies = {
+        'https':[],
+        'http':[],
+    }
+    res = requests.get('https://raw.githubusercontent.com/fate0/proxylist/master/proxy.list')
     content = res.content.decode().split("\n")
     for v in content:
         try:
             proxy=json.loads(v)
             if proxy['type'] == 'http':
-                proxies.append(proxy)
+                proxies['http'].append(proxy)
+            if proxy['type'] == 'https':
+                proxies['https'].append(proxy)
         except:
             pass
     return proxies
@@ -54,17 +48,21 @@ class Search:
     line = []
     is_proxy = False
     proxies_bak = []
-    proxies = {}
+    proxies = {'http':'','https':''}
 
     def use_proxy(self):
         self.is_proxy = True
         self.proxies_bak = load_proxies()
 
     def get_proxy(self):
-        length = len(self.proxies_bak)
+        length = len(self.proxies_bak['http'])
         if length > 0:
             r = random.randint(0, length-1)
-            self.proxies = {'http': self.proxies_bak[r]['host']+':'+str(self.proxies_bak[r]['port'])}
+            self.proxies['http'] = self.proxies_bak['http'][r]['host']+':'+str(self.proxies_bak['http'][r]['port'])
+        length = len(self.proxies_bak['https'])
+        if length > 0:
+            r = random.randint(0, length-1)
+            self.proxies['https'] = self.proxies_bak['https'][r]['host']+':'+str(self.proxies_bak['https'][r]['port'])
 
     def load(self, keyword, page=1):
         url = 'https://m.weibo.cn/api/container/getIndex'
@@ -234,7 +232,7 @@ class User:
     cookie = None
     is_proxy = False
     proxies_bak = []
-    proxies = {}
+    proxies = {'http':'','https':''}
 
     def __init__(self, user):
         if isinstance(user, int):
@@ -248,7 +246,12 @@ class User:
             self.description = user['description']
             self.following = user['following']
             self.followers_count = user['followers_count']
-            self.follow_count = user['follow_count']
+            if 'friends_count' in user.keys():
+                self.follow_count = user['friends_count']
+            elif 'follow_count' in user.keys():
+                self.follow_count = user['follow_count']
+            else:
+                self.follow_count = 0
 
     def set_cookie(self, cookie):
         self.cookie = cookie
@@ -327,10 +330,14 @@ class User:
         self.proxies_bak = load_proxies()
 
     def get_proxy(self):
-        length = len(self.proxies_bak)
+        length = len(self.proxies_bak['http'])
         if length > 0:
             r = random.randint(0, length-1)
-            self.proxies = {'http': self.proxies_bak[r]['host']+':'+str(self.proxies_bak[r]['port'])}
+            self.proxies['http'] = self.proxies_bak['http'][r]['host']+':'+str(self.proxies_bak['http'][r]['port'])
+        length = len(self.proxies_bak['https'])
+        if length > 0:
+            r = random.randint(0, length-1)
+            self.proxies['https'] = self.proxies_bak['https'][r]['host']+':'+str(self.proxies_bak['https'][r]['port'])
 
     def load(self):
         url = 'https://m.weibo.cn/api/container/getIndex'
@@ -339,7 +346,11 @@ class User:
             'value': self.id,
             'containerid': '100505'+str(self.id),
         }
-        res = requests.get(url, params=params, headers=HEADERS)
+        if self.is_proxy:
+            self.get_proxy()
+            res = requests.get(url, params=params, headers=HEADERS, proxies=self.proxies)
+        else:
+            res = requests.get(url, params=params, headers=HEADERS)
         try:
             content = res.json()
         except:
@@ -355,7 +366,7 @@ class User:
         self.follow_count = content['data']['userInfo']['follow_count']
 
     def load_alltimeline(self):
-        print('1')
+        print('todo')
 
     def load_timeline(self, num=10):
         url = 'https://m.weibo.cn/feed/friends?max_id='
@@ -381,10 +392,14 @@ class User:
         if not hasattr(self, 'posts'):
             self.posts = []
         statuses_count = self._statuses_count()
-        page = ceil(statuses_count / 10) + 1
-        while page > 0:
-            self.load_posts(page)
-            page = page-1
+        total_page = ceil(statuses_count / 25) + 1
+        posts = []
+        page = 1
+        while page <= total_page:
+            result = self.load_posts(page)
+            posts = posts+result
+            page = page+1
+            time.sleep(2)
 
     def load_posts(self, page=1, since_id=''):
         if not hasattr(self, 'posts'):
@@ -395,15 +410,29 @@ class User:
             'value': self.id,
             'containerid': '107603' + str(self.id),
             'page': page,
+            'count':'25',
             'since_id': since_id,
         }
-        res = requests.get(url, params=params, headers=HEADERS)
+
+        posts = []
+        if self.is_proxy:
+            self.get_proxy()
+            res = requests.get(url, params=params, headers=HEADERS,proxies=self.proxies)
+        else:
+            res = requests.get(url, params=params, headers=HEADERS)
         try:
             content = res.json()
+        
         except:
-            return
-        for v in content['data']['cards']:
+            return posts
+        if 'cards' in content.keys():
+            cards=content['cards']
+        else:
+            cards=content['data']['cards']
+        for v in cards:
             if v['card_type'] != 9:
                 continue
             post = Post(v['mblog'])
             self.posts.append(post)
+            posts.append(post)
+        return posts
