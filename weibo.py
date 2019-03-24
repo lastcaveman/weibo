@@ -19,50 +19,32 @@ HEADERS = {
     'user-agent': 'Mozilla/5.0 (Windows; U; Windows NT 6.1; en-US) AppleWebKit/534.20 (KHTML, like Gecko) Chrome/11.0.672.2 Safari/534.20',
 }
 
-def getConfig(section, key):
-    config = configparser.RawConfigParser()
-    path = '.config'
-    config.read(path)
-    return config.get(section, key)
-
-def load_proxies():
-    proxies = {
-        'https':[],
-        'http':[],
-    }
-    res = requests.get('https://raw.githubusercontent.com/fate0/proxylist/master/proxy.list')
-    content = res.content.decode().split("\n")
-    for v in content:
-        try:
-            proxy=json.loads(v)
-            if proxy['type'] == 'http':
-                proxies['http'].append(proxy)
-            if proxy['type'] == 'https':
-                proxies['https'].append(proxy)
-        except:
-            pass
-    return proxies
+def http_get(url, params, headers, proxy_config):
+    session = requests.session()
+    session.keep_alive = False
+    if proxy_config != None:
+        if proxy_config['mode']==1:
+            res = requests.get(proxy_config['proxy_pool'])
+            session.proxies = {
+                'http':'http://'+res.content.decode('utf-8'),
+                'https':'https://'+res.content.decode('utf-8'),
+            }
+        if proxy_config['mode']==2:
+            session.proxies = proxy_config['proxy']
+        if proxy_config['mode']==3:
+            length = len(proxy_config['proxies'])
+            r = random.randint(0, length-1)
+            session.proxies = proxy_config['proxies'][r]
+    session.params = params
+    session.headers = headers
+    res = session.get(url)
+    if res.status_code==200:
+        return res
 
 class Search:
 
     line = []
-    is_proxy = False
-    proxies_bak = []
-    proxies = {'http':'','https':''}
-
-    def use_proxy(self):
-        self.is_proxy = True
-        self.proxies_bak = load_proxies()
-
-    def get_proxy(self):
-        length = len(self.proxies_bak['http'])
-        if length > 0:
-            r = random.randint(0, length-1)
-            self.proxies['http'] = self.proxies_bak['http'][r]['host']+':'+str(self.proxies_bak['http'][r]['port'])
-        length = len(self.proxies_bak['https'])
-        if length > 0:
-            r = random.randint(0, length-1)
-            self.proxies['https'] = self.proxies_bak['https'][r]['host']+':'+str(self.proxies_bak['https'][r]['port'])
+    proxy_config = None
 
     def load(self, keyword, page=1):
         url = 'https://m.weibo.cn/api/container/getIndex'
@@ -72,12 +54,7 @@ class Search:
             'page_type': 'searchall',
         }
         headers = HEADERS
-        if self.is_proxy:
-            self.get_proxy()
-            res = requests.get(url, params=params,
-                               headers=headers, proxies=self.proxies)
-        else:
-            res = requests.get(url, params=params, headers=headers)
+        res = http_get(url, params=params, headers=headers)
         try:
             content = res.json()
         except:
@@ -89,10 +66,198 @@ class Search:
             items.append(post)
         return items
 
+class User:
+
+    id = None
+    cookie = None
+    proxy_config = None
+
+    def __init__(self, user):
+        if isinstance(user, int):
+            self.id = user
+        elif isinstance(user, dict):
+            self.id = user['id']
+            self.nickname = user['screen_name']
+            self.avatar = user['avatar_hd']
+            self.statuses_count = user['statuses_count']
+            self.follow_me = user['follow_me']
+            self.description = user['description']
+            self.following = user['following']
+            self.followers_count = user['followers_count']
+            if 'friends_count' in user.keys():
+                self.follow_count = user['friends_count']
+            elif 'follow_count' in user.keys():
+                self.follow_count = user['follow_count']
+            else:
+                self.follow_count = 0
+
+    def set_cookie(self, cookie):
+        self.cookie = cookie
+
+    def _nickname(self):
+        if not hasattr(self, 'nickname'):
+            self.load()
+        return self.nickname
+
+    def _avatar(self):
+        if not hasattr(self, 'avatar'):
+            self.load()
+        return self.avatar
+
+    def _statuses_count(self):
+        if not hasattr(self, 'statuses_count'):
+            self.load()
+        return self.statuses_count
+
+    def _description(self):
+        if not hasattr(self, 'description'):
+            self.load()
+        return self.description
+
+    def _follow_me(self):
+        if not hasattr(self, 'follow_me'):
+            self.load()
+        return self.follow_me
+
+    def _following(self):
+        if not hasattr(self, 'following'):
+            self.load()
+        return self.following
+
+    def _followers_count(self):
+        if not hasattr(self, 'followers_count'):
+            self.load()
+        return self.followers_count
+
+    def _follow_count(self):
+        if not hasattr(self, 'follow_count'):
+            self.load()
+        return self.follow_count
+
+    def _posts(self):
+        if not hasattr(self, 'posts'):
+            self.load_posts()
+        return self.posts
+
+    def _timeline(self):
+        if not hasattr(self, 'timeline'):
+            self.timeline = []
+            self.load_timeline()
+        return self.timeline
+
+    def _allposts(self):
+        if not hasattr(self, 'all_posts'):
+            self.load_allposts()
+        return self.posts
+
+    def __str__(self):
+        return json.dumps({
+            'id': self.id,
+            'nickname': self.nickname,
+            'avatar': self.avatar,
+            'statuses_count': self.statuses_count,
+            'follow_me': self.follow_me,
+            'description': self.description,
+            'following': self.following,
+            'followers_count': self.followers_count,
+            'follow_count': self.follow_count,
+        }, ensure_ascii=False)
+
+    def load(self):
+        url = 'https://m.weibo.cn/api/container/getIndex'
+        params = {
+            'type': 'uid',
+            'value': self.id,
+            'containerid': '100505'+str(self.id),
+        }
+        res = http_get(url, params=params, headers=HEADERS, proxy_config=self.proxy_config)
+        try:
+            content = res.json()
+        except:
+            return
+        self.id = content['data']['userInfo']['id']
+        self.nickname = content['data']['userInfo']['screen_name']
+        self.avatar = content['data']['userInfo']['avatar_hd']
+        self.statuses_count = content['data']['userInfo']['statuses_count']
+        self.follow_me = content['data']['userInfo']['follow_me']
+        self.description = content['data']['userInfo']['description']
+        self.following = content['data']['userInfo']['following']
+        self.followers_count = content['data']['userInfo']['followers_count']
+        self.follow_count = content['data']['userInfo']['follow_count']
+
+    def load_alltimeline(self):
+        print('todo')
+
+    def load_timeline(self, num=10):
+        url = 'https://m.weibo.cn/feed/friends'
+        params = {
+            'max_id':''
+        }
+        headers = HEADERS
+        headers['cookie'] = self.cookie
+        timeline = []
+        res = http_get(url, params=params, headers=headers, proxy_config=self.proxy_config)
+        try:
+            content = res.json()
+        except:
+            return []
+        for v in content['data']['statuses']:
+            post = Post(v)
+            timeline.append(post)
+            self.timeline.append(post)
+        return timeline
+
+    def load_allposts(self):
+        if not hasattr(self, 'posts'):
+            self.posts = []
+        statuses_count = self._statuses_count()
+        total_page = ceil(statuses_count / 25) + 1
+        posts = []
+        page = 1
+        while page <= total_page:
+            result = self.load_posts(page)
+            print(page)
+            print(result)
+            posts = posts+result
+            page = page+1
+            time.sleep(2)
+        return posts
+
+    def load_posts(self, page=1, since_id=''):
+        if not hasattr(self, 'posts'):
+            self.posts = []
+        url = 'https://m.weibo.cn/api/container/getIndex'
+        params = {
+            'type': 'uid',
+            'value': self.id,
+            'containerid': '107603' + str(self.id),
+            'page': page,
+            'count':'25',
+            'since_id': since_id,
+        }
+        posts = []
+        res = http_get(url, params=params, headers=HEADERS, proxy_config=self.proxy_config)
+        try:
+            content = res.json()
+        
+        except:
+            return posts
+        if 'cards' in content.keys():
+            cards=content['cards']
+        else:
+            cards=content['data']['cards']
+        for v in cards:
+            if v['card_type'] != 9:
+                continue
+            post = Post(v['mblog'])
+            self.posts.append(post)
+            posts.append(post)
+        return posts
 
 class Post:
 
     id = None
+    proxy_config = None
 
     def __init__(self, post):
         if isinstance(post, int):
@@ -195,7 +360,7 @@ class Post:
             'lang': 'zh_CN',
             'ua': 'iPhone8,1_iOS12.0.1_Weico_5000_wifi',
         }
-        res = requests.get(url, params=params, headers=HEADERS)
+        res = http_get(url, params=params, headers=HEADERS)
         try:
             content = res.json()
         except:
@@ -222,216 +387,3 @@ class Post:
         self.published_at = datetime.datetime.strptime(
             post['created_at'], GMT_FORMAT).strftime('%Y-%m-%d %H:%M:%S')
         self.user = User(post['user'])
-
-
-class User:
-
-    id = None
-    cookie = None
-    is_proxy = False
-    proxies_bak = []
-    proxies = {'http':'','https':''}
-
-    def __init__(self, user):
-        if isinstance(user, int):
-            self.id = user
-        elif isinstance(user, dict):
-            self.id = user['id']
-            self.nickname = user['screen_name']
-            self.avatar = user['avatar_hd']
-            self.statuses_count = user['statuses_count']
-            self.follow_me = user['follow_me']
-            self.description = user['description']
-            self.following = user['following']
-            self.followers_count = user['followers_count']
-            if 'friends_count' in user.keys():
-                self.follow_count = user['friends_count']
-            elif 'follow_count' in user.keys():
-                self.follow_count = user['follow_count']
-            else:
-                self.follow_count = 0
-
-    def set_cookie(self, cookie):
-        self.cookie = cookie
-
-    def _nickname(self):
-        if not hasattr(self, 'nickname'):
-            self.load()
-        return self.nickname
-
-    def _avatar(self):
-        if not hasattr(self, 'avatar'):
-            self.load()
-        return self.avatar
-
-    def _statuses_count(self):
-        if not hasattr(self, 'statuses_count'):
-            self.load()
-        return self.statuses_count
-
-    def _description(self):
-        if not hasattr(self, 'description'):
-            self.load()
-        return self.description
-
-    def _follow_me(self):
-        if not hasattr(self, 'follow_me'):
-            self.load()
-        return self.follow_me
-
-    def _following(self):
-        if not hasattr(self, 'following'):
-            self.load()
-        return self.following
-
-    def _followers_count(self):
-        if not hasattr(self, 'followers_count'):
-            self.load()
-        return self.followers_count
-
-    def _follow_count(self):
-        if not hasattr(self, 'follow_count'):
-            self.load()
-        return self.follow_count
-
-    def _posts(self):
-        if not hasattr(self, 'posts'):
-            self.load_posts()
-        return self.posts
-
-    def _timeline(self):
-        if not hasattr(self, 'timeline'):
-            self.timeline = []
-            self.load_timeline()
-        return self.timeline
-
-    def _allposts(self):
-        if not hasattr(self, 'all_posts'):
-            self.load_allposts()
-        return self.posts
-
-    def __str__(self):
-        return json.dumps({
-            'id': self.id,
-            'nickname': self.nickname,
-            'avatar': self.avatar,
-            'statuses_count': self.statuses_count,
-            'follow_me': self.follow_me,
-            'description': self.description,
-            'following': self.following,
-            'followers_count': self.followers_count,
-            'follow_count': self.follow_count,
-        }, ensure_ascii=False)
-
-    def use_proxy(self):
-        self.is_proxy = True
-        self.proxies_bak = load_proxies()
-
-    def get_proxy(self):
-        length = len(self.proxies_bak['http'])
-        if length > 0:
-            r = random.randint(0, length-1)
-            self.proxies['http'] = self.proxies_bak['http'][r]['host']+':'+str(self.proxies_bak['http'][r]['port'])
-        length = len(self.proxies_bak['https'])
-        if length > 0:
-            r = random.randint(0, length-1)
-            self.proxies['https'] = self.proxies_bak['https'][r]['host']+':'+str(self.proxies_bak['https'][r]['port'])
-
-    def load(self):
-        url = 'https://m.weibo.cn/api/container/getIndex'
-        params = {
-            'type': 'uid',
-            'value': self.id,
-            'containerid': '100505'+str(self.id),
-        }
-        if self.is_proxy:
-            self.get_proxy()
-            res = requests.get(url, params=params, headers=HEADERS, proxies=self.proxies)
-        else:
-            res = requests.get(url, params=params, headers=HEADERS)
-        try:
-            content = res.json()
-        except:
-            return
-        self.id = content['data']['userInfo']['id']
-        self.nickname = content['data']['userInfo']['screen_name']
-        self.avatar = content['data']['userInfo']['avatar_hd']
-        self.statuses_count = content['data']['userInfo']['statuses_count']
-        self.follow_me = content['data']['userInfo']['follow_me']
-        self.description = content['data']['userInfo']['description']
-        self.following = content['data']['userInfo']['following']
-        self.followers_count = content['data']['userInfo']['followers_count']
-        self.follow_count = content['data']['userInfo']['follow_count']
-
-    def load_alltimeline(self):
-        print('todo')
-
-    def load_timeline(self, num=10):
-        url = 'https://m.weibo.cn/feed/friends?max_id='
-        headers = HEADERS
-        headers['cookie'] = self.cookie
-        timeline = []
-        if self.is_proxy:
-            self.get_proxy()
-            res = requests.get(url, headers=headers, proxies=self.proxies)
-        else:
-            res = requests.get(url, headers=headers)
-        try:
-            content = res.json()
-        except:
-            return []
-        for v in content['data']['statuses']:
-            post = Post(v)
-            timeline.append(post)
-            self.timeline.append(post)
-        return timeline
-
-    def load_allposts(self):
-        if not hasattr(self, 'posts'):
-            self.posts = []
-        statuses_count = self._statuses_count()
-        total_page = ceil(statuses_count / 25) + 1
-        posts = []
-        page = 1
-        while page <= total_page:
-            result = self.load_posts(page)
-            posts = posts+result
-            page = page+1
-            time.sleep(2)
-        return posts
-
-    def load_posts(self, page=1, since_id=''):
-        if not hasattr(self, 'posts'):
-            self.posts = []
-        url = 'https://m.weibo.cn/api/container/getIndex'
-        params = {
-            'type': 'uid',
-            'value': self.id,
-            'containerid': '107603' + str(self.id),
-            'page': page,
-            'count':'25',
-            'since_id': since_id,
-        }
-
-        posts = []
-        if self.is_proxy:
-            self.get_proxy()
-            res = requests.get(url, params=params, headers=HEADERS,proxies=self.proxies)
-        else:
-            res = requests.get(url, params=params, headers=HEADERS)
-        try:
-            content = res.json()
-        
-        except:
-            return posts
-        if 'cards' in content.keys():
-            cards=content['cards']
-        else:
-            cards=content['data']['cards']
-        for v in cards:
-            if v['card_type'] != 9:
-                continue
-            post = Post(v['mblog'])
-            self.posts.append(post)
-            posts.append(post)
-        return posts
