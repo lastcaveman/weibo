@@ -4,7 +4,6 @@ import os
 import json
 import requests
 import datetime
-import configparser
 from math import ceil
 import random
 import time
