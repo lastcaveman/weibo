@@ -18,7 +18,7 @@ HEADERS = {
     'user-agent': 'Mozilla/5.0 (Windows; U; Windows NT 6.1; en-US) AppleWebKit/534.20 (KHTML, like Gecko) Chrome/11.0.672.2 Safari/534.20',
 }
 
-def http_get(url, params, headers, proxy_config):
+def http_get(url, params, headers, proxy_config=None):
     session = requests.session()
     session.keep_alive = False
     if proxy_config != None:
