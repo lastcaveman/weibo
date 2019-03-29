@@ -256,6 +256,7 @@ class User:
 class Post:
 
     id = None
+    comments = []
     proxy_config = None
 
     def __init__(self, post):
