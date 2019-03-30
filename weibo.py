@@ -215,8 +215,6 @@ class User:
         page = 1
         while page <= total_page:
             result = self.load_posts(page)
-            print(page)
-            print(result)
             posts = posts+result
             page = page+1
             time.sleep(2)
@@ -387,3 +385,7 @@ class Post:
         self.published_at = datetime.datetime.strptime(
             post['created_at'], GMT_FORMAT).strftime('%Y-%m-%d %H:%M:%S')
         self.user = User(post['user'])
+
+class Comment:
+
+    id = None
