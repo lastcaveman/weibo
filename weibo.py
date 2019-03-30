@@ -53,7 +53,7 @@ class Search:
             'page_type': 'searchall',
         }
         headers = HEADERS
-        res = http_get(url, params=params, headers=headers)
+        res = http_get(url, params=params, headers=headers, proxy_config=self.proxy_config)
         try:
             content = res.json()
         except:
@@ -358,7 +358,7 @@ class Post:
             'lang': 'zh_CN',
             'ua': 'iPhone8,1_iOS12.0.1_Weico_5000_wifi',
         }
-        res = http_get(url, params=params, headers=HEADERS)
+        res = http_get(url, params=params, headers=HEADERS, proxy_config=self.proxy_config)
         try:
             content = res.json()
         except:
