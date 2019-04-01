@@ -7,6 +7,7 @@ import datetime
 from math import ceil
 import random
 import time
+from requests.exceptions import ProxyError, ConnectTimeout, SSLError
 
 HEADERS = {
     'accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
@@ -18,27 +19,54 @@ HEADERS = {
     'user-agent': 'Mozilla/5.0 (Windows; U; Windows NT 6.1; en-US) AppleWebKit/534.20 (KHTML, like Gecko) Chrome/11.0.672.2 Safari/534.20',
 }
 
+
 def http_get(url, params, headers, proxy_config=None):
     session = requests.session()
     session.keep_alive = False
+    session.params = params
+    session.headers = headers
     if proxy_config != None:
-        if proxy_config['mode']==1:
+        if proxy_config['mode'] == 1:
             res = requests.get(proxy_config['proxy_pool'])
             session.proxies = {
-                'http':'http://'+res.content.decode('utf-8'),
-                'https':'https://'+res.content.decode('utf-8'),
+                'https': 'https://'+res.content.decode('utf-8'),
             }
-        if proxy_config['mode']==2:
+        if proxy_config['mode'] == 2:
             session.proxies = proxy_config['proxy']
-        if proxy_config['mode']==3:
+        if proxy_config['mode'] == 3:
             length = len(proxy_config['proxies'])
             r = random.randint(0, length-1)
             session.proxies = proxy_config['proxies'][r]
-    session.params = params
-    session.headers = headers
-    res = session.get(url)
-    if res.status_code==200:
-        return res
+        if proxy_config['mode'] == 4:
+            res = requests.get(proxy_config['custom_proxy_pool'])
+            session.proxies = {
+                'https': 'https://'+res.json()['data'],
+            }
+        try:
+            res = session.get(url, proxies=session.proxies, timeout=3)
+        except (ProxyError):
+            return http_get(url, params, headers, proxy_config)
+        except ConnectTimeout:
+            return http_get(url, params, headers, proxy_config)
+        except requests.exceptions.SSLError:
+            return http_get(url, params, headers, proxy_config)
+        except requests.exceptions.ReadTimeout:
+            return http_get(url, params, headers, proxy_config)
+        except requests.exceptions.ChunkedEncodingError:
+            return http_get(url, params, headers, proxy_config)
+        except requests.exceptions.ConnectionError:
+            return http_get(url, params, headers, proxy_config)
+    else:
+        res = session.get(url, timeout=3)
+    if res.content.decode('utf-8') == '':
+        return http_get(url, params, headers, proxy_config)
+    if res.content.find(b'<!DOCTYPE html>') >= 0:
+        return None
+    if 'errno' in res.json().keys() and res.json()['errno']=='100005':
+        return http_get(url, params, headers, proxy_config)
+    if res.status_code == 200:
+        return res.json()
+    return None
 
 class Search:
 
@@ -53,17 +81,17 @@ class Search:
             'page_type': 'searchall',
         }
         headers = HEADERS
-        res = http_get(url, params=params, headers=headers, proxy_config=self.proxy_config)
-        try:
-            content = res.json()
-        except:
-            return []
+        content = http_get(url, params=params, headers=headers,
+                       proxy_config=self.proxy_config)
+        if content == None:
+            return
         items = []
         for v in content['data']['cards'][0]['card_group']:
             post = Post(v['mblog'])
             self.line.append(post)
             items.append(post)
         return items
+
 
 class User:
 
@@ -169,10 +197,9 @@ class User:
             'value': self.id,
             'containerid': '100505'+str(self.id),
         }
-        res = http_get(url, params=params, headers=HEADERS, proxy_config=self.proxy_config)
-        try:
-            content = res.json()
-        except:
+        content = http_get(url, params=params, headers=HEADERS,
+                       proxy_config=self.proxy_config)
+        if content == None:
             return
         self.id = content['data']['userInfo']['id']
         self.nickname = content['data']['userInfo']['screen_name']
@@ -190,16 +217,16 @@ class User:
     def load_timeline(self, num=10):
         url = 'https://m.weibo.cn/feed/friends'
         params = {
-            'max_id':''
+            'max_id': ''
         }
         headers = HEADERS
         headers['cookie'] = self.cookie
         timeline = []
-        res = http_get(url, params=params, headers=headers, proxy_config=self.proxy_config)
-        try:
-            content = res.json()
-        except:
+        content = http_get(url, params=params, headers=headers,
+                       proxy_config=self.proxy_config)
+        if content == None:
             return []
+
         for v in content['data']['statuses']:
             post = Post(v)
             timeline.append(post)
@@ -217,7 +244,6 @@ class User:
             result = self.load_posts(page)
             posts = posts+result
             page = page+1
-            time.sleep(2)
         return posts
 
     def load_posts(self, page=1, since_id=''):
@@ -229,20 +255,19 @@ class User:
             'value': self.id,
             'containerid': '107603' + str(self.id),
             'page': page,
-            'count':'25',
+            'count': '25',
             'since_id': since_id,
         }
         posts = []
-        res = http_get(url, params=params, headers=HEADERS, proxy_config=self.proxy_config)
-        try:
-            content = res.json()
-        
-        except:
-            return posts
+        content = http_get(url, params=params, headers=HEADERS,
+                       proxy_config=self.proxy_config)
+        if content == None:
+            return []
+
         if 'cards' in content.keys():
-            cards=content['cards']
+            cards = content['cards']
         else:
-            cards=content['data']['cards']
+            cards = content['data']['cards']
         for v in cards:
             if v['card_type'] != 9:
                 continue
@@ -293,6 +318,7 @@ class Post:
                 self.published_at = ''
             if 'user' in post.keys():
                 self.user = User(post['user'])
+            self.list_detail = post
 
     def __str__(self):
         if hasattr(self, 'source_text'):
@@ -358,10 +384,9 @@ class Post:
             'lang': 'zh_CN',
             'ua': 'iPhone8,1_iOS12.0.1_Weico_5000_wifi',
         }
-        res = http_get(url, params=params, headers=HEADERS, proxy_config=self.proxy_config)
-        try:
-            content = res.json()
-        except:
+        content = http_get(url, params=params, headers=HEADERS,
+                       proxy_config=self.proxy_config)
+        if content == None:
             return
         post = content['data']
         self.text = post['text']
