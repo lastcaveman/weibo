@@ -226,7 +226,6 @@ class User:
                        proxy_config=self.proxy_config)
         if content == None:
             return []
-
         for v in content['data']['statuses']:
             post = Post(v)
             timeline.append(post)
