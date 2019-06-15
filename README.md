@@ -35,6 +35,48 @@ or
   sudo pip2 install -r requirements.txt
 ```
 
+### 06.15/2019更新 支持代理 ###
+---------
+支持四种类型代理
+
+mode=1 代理池 
+```
+class.proxy_config = {
+  'mode': 1,
+  'proxy_pool': 'http://agent.com/pool'
+}
+```
+
+mode=2 单点代理
+```
+class.proxy_config = {
+  'mode': 1,
+  'proxy': 'http://127.0.0.1:8083'
+}
+```
+
+mode=3 代理组(随机选择)
+```
+class.proxy_config = {
+  'mode': 3,
+  'proxies': [
+    'http://127.0.0.1:8083',
+    'http://127.0.0.1:8084'
+  ]
+}
+```
+
+实例: 
+```
+    user_id = 12345678
+    user = User(user_id)
+    user.proxy_config = {
+        'mode': 4,
+        'custom_proxy_pool': 'http://127.0.0.1:8083',
+    }
+    timeline = user.load_allposts()
+```
+
 ### User:用户 ###
 ---------
 User 代表一个用户. 创建一个 User 对象需传入该用户的 ID ，如：
