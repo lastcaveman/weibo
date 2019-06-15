@@ -7,6 +7,7 @@ import datetime
 from math import ceil
 import random
 import time
+import chardet
 from requests.exceptions import ProxyError, ConnectTimeout, SSLError
 
 HEADERS = {
@@ -18,7 +19,6 @@ HEADERS = {
     'upgrade-insecure-requests': '1',
     'user-agent': 'Mozilla/5.0 (Windows; U; Windows NT 6.1; en-US) AppleWebKit/534.20 (KHTML, like Gecko) Chrome/11.0.672.2 Safari/534.20',
 }
-
 
 def http_get(url, params, headers, proxy_config=None):
     session = requests.session()
@@ -58,8 +58,9 @@ def http_get(url, params, headers, proxy_config=None):
             return http_get(url, params, headers, proxy_config)
     else:
         res = session.get(url, timeout=3)
-    if res.content.decode('utf-8') == '':
-        return http_get(url, params, headers, proxy_config)
+    if chardet.detect(b'Hello, world!')['encoding'] != 'utf-8':
+        if res.content.decode('utf-8') == '':
+            return http_get(url, params, headers, proxy_config)
     if res.content.find(b'<!DOCTYPE html>') >= 0:
         return None
     if 'errno' in res.json().keys() and res.json()['errno']=='100005':
