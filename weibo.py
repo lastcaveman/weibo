@@ -58,11 +58,11 @@ def http_get(url, params, headers, proxy_config=None):
             return http_get(url, params, headers, proxy_config)
     else:
         res = session.get(url, timeout=3)
+    if res.content.find(b'<head>') >= 0:
+        return None
     if chardet.detect(b'Hello, world!')['encoding'] != 'utf-8':
         if res.content.decode('utf-8') == '':
             return http_get(url, params, headers, proxy_config)
-    if res.content.find(b'<!DOCTYPE html>') >= 0:
-        return None
     if 'errno' in res.json().keys() and res.json()['errno']=='100005':
         return http_get(url, params, headers, proxy_config)
     if res.status_code == 200:
