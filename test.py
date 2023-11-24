@@ -2,12 +2,12 @@ from weibo import User, Post, Search
 
 if __name__ == '__main__':
 
-    search = Search()
-    items = search.load('新闻')
-    print('search')
-    print(items)
-    for post in items:
-        print(post)
+    # search = Search()
+    # items = search.load('新闻')
+    # print('search')
+    # print(items)
+    # for post in items:
+    #     print(post)
     user = User(6000001234)
     nickname = user._nickname()
     print('user nickname: ')
@@ -60,5 +60,4 @@ if __name__ == '__main__':
     published_at = post._published_at()
     print('post published_at')
     print(published_at)
-
     print(post)
